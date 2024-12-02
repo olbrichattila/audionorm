@@ -21,7 +21,7 @@ func GetCommandLineParams() (string, float64, float64, bool, error) {
 	}
 
 	tolerance := getTolerance()
-	if tolerance < 0 || tolerance > 10 {
+	if tolerance < 0 || tolerance > 20 {
 		return "", 0, 0, false, fmt.Errorf("over amplification tolerance should be between 0 and 10")
 	}
 

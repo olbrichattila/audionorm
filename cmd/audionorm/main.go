@@ -35,7 +35,7 @@ audionorm <path> -factor=<value> -tolerance=<value> -help
 Description:
 <path>: Specifies the folder containing audio files to process. Defaults to the current directory if not provided.
 -factor=<value>: A number between 0 and 1 that defines the normalization factor. Defaults to 1 if not specified.
--tolerance=<value>: Specifies the over-amplification tolerance, a number between 0 and 10. If set to 0 or omitted, over-amplification is disabled.
+-tolerance=<value>: Specifies the over-amplification tolerance, a number between 0 and 20. If set to 0 or omitted, over-amplification is disabled.
 -help: Displays this help message and exits.
 Notes:
 

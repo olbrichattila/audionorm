@@ -169,7 +169,7 @@ func (t *norma) normalizeWAV(wavPath string) error {
 	if t.tolerance > 0 {
 		for i := 32767; i > 0; i-- {
 			percentage := float64(peekBuffer[i]) / float64(sampleCount) * 10000000
-			if percentage > 10 {
+			if percentage > t.tolerance {
 				t.message(fmt.Sprintf("  - tolerance at %d position", 32767-i))
 				maxSample = int16(i)
 				break
