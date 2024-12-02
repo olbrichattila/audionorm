@@ -14,7 +14,7 @@
 To install `audionorm`, ensure you have [Go](https://golang.org/) installed, then run:
 
 ```
-go install github.com/olbrichattila/audionorm/cmd/audionorm/@latest
+go install github.com/olbrichattila/audionorm/cmd/audionorm@latest
 ```
 
 ## How to Use audionorm
