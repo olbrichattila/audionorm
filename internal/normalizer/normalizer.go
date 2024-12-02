@@ -1,3 +1,4 @@
+// Package normalizer convert audio files with volume normalization to vaw
 package normalizer
 
 import (
@@ -32,19 +33,21 @@ func New(messageCallback interface{}) AudioNormalizer {
 
 // AudioNormalizer abstracts the normalizer logic
 type AudioNormalizer interface {
-	Normalize(folder string, factor float64) error
+	Normalize(folder string, factor, tolerance float64) error
 }
 
 type norma struct {
 	factor          float64
+	tolerance       float64
 	messageCallback interface{}
 }
 
 // Normalize starts normalizing files in the folder
-func (t *norma) Normalize(folder string, factor float64) error {
+func (t *norma) Normalize(folder string, factor, tolerance float64) error {
 	t.factor = factor
+	t.tolerance = tolerance
 	t.message(
-		fmt.Sprintf("Start processing folder %s, Normalization factor: %.2f", folder, factor),
+		fmt.Sprintf("Start processing folder %s, Normalization factor: %.2f, over amplification tolerance %.2f", folder, factor, tolerance),
 	)
 
 	files, err := os.ReadDir(folder)
@@ -99,8 +102,7 @@ func (t *norma) normalizeFile(fileName string) error {
 	}
 	defer wavFile.Close()
 
-	// sampleRate := int32(decoder.SampleRate())
-	sampleRate := int32(44100)
+	sampleRate := int32(decoder.SampleRate())
 	numChannels := int16(stereo)
 	bitsPerSample := int16(16)
 	data := []byte{}
@@ -138,7 +140,9 @@ func (t *norma) normalizeWAV(wavPath string) error {
 	wavFile.Seek(44, 0)
 
 	buf := make([]byte, 4096)
-	var maxSample int16 = 0
+	var maxSample int16
+	var sampleCount int64
+	peekBuffer := make([]int64, 32768)
 
 	// First pass: Find the maximum sample value
 	for {
@@ -152,15 +156,30 @@ func (t *norma) normalizeWAV(wavPath string) error {
 
 		for i := 0; i < n; i += 2 {
 			sample := int16(binary.LittleEndian.Uint16(buf[i : i+2]))
-			if t.abs(sample) > maxSample {
-				maxSample = t.abs(sample)
+			abs := t.abs(sample)
+			if abs > maxSample {
+				maxSample = abs
+			}
+			peekBuffer[abs]++
+			sampleCount++
+		}
+	}
+
+	// Calculate peek with some threshold
+	if t.tolerance > 0 {
+		for i := 32767; i > 0; i-- {
+			percentage := float64(peekBuffer[i]) / float64(sampleCount) * 10000000
+			if percentage > 10 {
+				t.message(fmt.Sprintf("  - tolerance at %d position", 32767-i))
+				maxSample = int16(i)
+				break
 			}
 		}
 	}
 
 	// Calculate normalization factor
 	factor := float64(math.MaxInt16) / float64(maxSample) * float64(t.factor)
-	t.message(fmt.Sprintf("  - calculated factor: %2.f, max Sample: %d", factor, maxSample))
+	t.message(fmt.Sprintf("  - calculated factor: %0.4f, max Sample: %d", factor, maxSample))
 
 	// Second pass: Apply normalization
 	wavFile.Seek(44, 0)
@@ -175,8 +194,16 @@ func (t *norma) normalizeWAV(wavPath string) error {
 
 		for i := 0; i < n; i += 2 {
 			sample := int16(binary.LittleEndian.Uint16(buf[i : i+2]))
-			normalizedSample := int16(float64(sample) * factor)
-			binary.LittleEndian.PutUint16(buf[i:i+2], uint16(normalizedSample))
+			normalizedSample := float64(sample) * factor
+
+			// In case of over amplification, remove some distortion
+			if normalizedSample > 32767 {
+				normalizedSample = 32767
+			} else if normalizedSample < -32767 {
+				normalizedSample = -32767
+			}
+
+			binary.LittleEndian.PutUint16(buf[i:i+2], uint16(int16(normalizedSample)))
 		}
 
 		// Write normalized data back

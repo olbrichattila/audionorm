@@ -9,18 +9,23 @@ import (
 )
 
 // GetCommandLineParams returns path, normalization factor and if help needs to be displayed
-func GetCommandLineParams() (string, float64, bool, error) {
+func GetCommandLineParams() (string, float64, float64, bool, error) {
 	folder := getFolder()
 	if !folderExists(folder) {
-		return "", 0, false, fmt.Errorf("folder " + folder + " does not exists or not readable, or it is a file.")
+		return "", 0, 0, false, fmt.Errorf("folder " + folder + " does not exists or not readable, or it is a file.")
 	}
 
 	factor := getFactor()
 	if factor <= 0 || factor > 1 {
-		return "", 0, false, fmt.Errorf("factor must be larger then 0 and smaller or equal then 1, example 0.8")
+		return "", 0, 0, false, fmt.Errorf("factor must be larger then 0 and smaller or equal then 1, example 0.8")
 	}
 
-	return folder, factor, getHelp(), nil
+	tolerance := getTolerance()
+	if tolerance < 0 || tolerance > 10 {
+		return "", 0, 0, false, fmt.Errorf("over amplification tolerance should be between 0 and 10")
+	}
+
+	return folder, factor, tolerance, getHelp(), nil
 }
 
 func getFolder() string {
@@ -45,6 +50,21 @@ func getFactor() float64 {
 	}
 
 	return 1
+}
+
+func getTolerance() float64 {
+	flagPars := getFlagParams()
+
+	if v, ok := flagPars["-tolerance"]; ok {
+		floatValue, err := strconv.ParseFloat(v, 64)
+		if err != nil {
+			return -1
+		}
+
+		return floatValue
+	}
+
+	return 0
 }
 
 func getHelp() bool {

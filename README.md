@@ -48,10 +48,33 @@ audionorm ./myfolder
 ```
 audionorm ./myfolder -factor=0.8
 ```
-Display help information and usage instructions:
+5. Display help information and usage instructions:
 ```
 audionorm -help
 ```
+
+6. Set a low over-amplification tolerance (e.g., 2):
+```
+audionorm ./folder -tolerance=2
+```
+
+7. Set a hight over-amplification tolerance (e.g., 2):
+```
+audionorm ./folder -tolerance=10
+```
+
+## Tolerance Feature
+The tolerance feature allows the program to handle naturally occurring high volumes without clipping or distortion. By setting a tolerance level, the program will permit a certain amount of over-amplification, enabling loud segments to remain audible and impactful.
+
+- Key Parameter: -tolerance=<value>
+- Range: 0 to 10
+- 0 (default): Disables over-amplification.
+- 1-10: Gradually increases the permissible over-amplification level, where higher values allow greater tolerance.
+
+### How It Works
+When -tolerance is set, the utility adjusts its normalization process to allow some high-volume segments to exceed the standard threshold. This is particularly useful for dynamic audio content, such as music or dialogue, where peaks contribute to the overall experience.
+
+For instance, a tolerance value of 2 permits minor over-amplification, while a value of 10 allows significant amplification for dramatic peaks.
 
 ## What Does the Normalization Factor Do?
 The normalization factor adjusts the output volume:

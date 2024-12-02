@@ -9,9 +9,9 @@ import (
 )
 
 func main() {
-	folder, factor, help, err := commandline.GetCommandLineParams()
+	folder, factor, tolerance, help, err := commandline.GetCommandLineParams()
 	if err != nil {
-		fmt.Println(err.Error())
+		fmt.Println("Error: \033[31m" + err.Error() + "\033[0m")
 		displayHelp()
 		return
 	}
@@ -25,21 +25,42 @@ func main() {
 		fmt.Println(message)
 	})
 
-	normalizer.Normalize(folder, factor)
+	normalizer.Normalize(folder, factor, tolerance)
 }
 
 func displayHelp() {
 	fmt.Println(
 		`Usage:
-  audionorm <path> -factor=0.8 -help
-    Where factor is a number between 0 and 1 and help displays this message
-    Non of the parameters are mandatory.
-	Examples:
-	audionorm (uses current directory and factor is 1)
-	audionorm -factor=0.8 (uses current directory and factor is 0.8)
-	audionorm ./myfolder (uses "myfolder" directory and factor is 1)
-	audionorm ./myfolder -factor=0.8 (uses "myfolder" directory and factor is 1)
-	audionorm ./myfolder -factor=0.8 -help (Display help only, and quit)
-	audionorm -help (display help only)
-	`)
+audionorm <path> -factor=<value> -tolerance=<value> -help
+Description:
+<path>: Specifies the folder containing audio files to process. Defaults to the current directory if not provided.
+-factor=<value>: A number between 0 and 1 that defines the normalization factor. Defaults to 1 if not specified.
+-tolerance=<value>: Specifies the over-amplification tolerance, a number between 0 and 10. If set to 0 or omitted, over-amplification is disabled.
+-help: Displays this help message and exits.
+Notes:
+
+All parameters are optional.
+If -help is specified, the program will display this message and exit without performing any processing.
+Examples:
+
+1. audionorm
+   Uses the current directory, normalization factor of 1, and disables over-amplification.
+
+2. audionorm -factor=0.8
+   Uses the current directory, with a normalization factor of 0.8.
+
+3. audionorm ./myfolder
+   Processes the "myfolder" directory with a normalization factor of 1.
+
+4. audionorm ./myfolder -factor=0.8
+   Processes the "myfolder" directory with a normalization factor of 0.8.
+
+5. audionorm ./myfolder -factor=0.8 -help
+   Displays this help message and exits without processing any files.
+
+6. audionorm -tolerance=2
+   Uses the current directory, with over-amplification tolerance set to 2.
+
+7. audionorm -help
+   Displays this help message and exits.`)
 }
