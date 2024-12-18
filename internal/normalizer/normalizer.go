@@ -68,12 +68,23 @@ func (t *norma) Normalize(folder string, factor, tolerance float64, convertBackT
 		if filepath.Ext(file.Name()) == sourceExt {
 			processed++
 			filePath := filepath.Join(folder, file.Name())
-			t.message(fmt.Sprintf("%d/%d Processing %s", fileCount, processed, filePath))
-			t.normalizeFile(filePath)
 			
-			t.normalizeWAV(
-				t.replaceFileExtension(filePath, destinationExt),
-			)
+			t.message(fmt.Sprintf("\033[32m%d/%d Processing %s\033[0m", fileCount, processed, filePath))
+			wavFileName, err := t.convertToWav(filePath)
+			if err != nil {
+				t.message(err.Error())
+				continue
+			}
+			
+			t.message("Converted\nNormalizing...")
+			
+			err = t.normalizeWAV(wavFileName)
+
+			if err != nil {
+				t.message(err.Error())
+			}
+
+			t.message("\n")
 		}
 	}
 
@@ -96,21 +107,22 @@ func (t *norma) numberOfFiles(files []fs.DirEntry, ext string) int {
 	return cnt
 }
 
-func (t *norma) normalizeFile(fileName string) error {
+func (t *norma) convertToWav(fileName string) (string, error) {
 	mp3File, err := os.Open(fileName)
 	if err != nil {
-		return fmt.Errorf("failed to open MP3 file: %v", err)
+		return "", fmt.Errorf("failed to open MP3 file: %v", err)
 	}
 	defer mp3File.Close()
 
 	decoder, err := mp3.NewDecoder(mp3File)
 	if err != nil {
-		return fmt.Errorf("failed to decode MP3: %v", err)
+		return "", fmt.Errorf("failed to decode MP3: %v", err)
 	}
-
-	wavFile, err := os.Create("./output/wav/" +  t.replaceFileExtension(fileName, destinationExt))
+	
+	wavFileName := outputWavFolder + "/" + t.replaceFileExtension(fileName, destinationExt)
+	wavFile, err := os.Create(wavFileName)
 	if err != nil {
-		return fmt.Errorf("failed to create %s file: %v", destinationExt, err)
+		return "", fmt.Errorf("failed to create %s file: %v", destinationExt, err)
 	}
 	defer wavFile.Close()
 
@@ -122,14 +134,14 @@ func (t *norma) normalizeFile(fileName string) error {
 
 	wavHeader := t.createWAVHeader(int32(len(data)), sampleRate, numChannels, bitsPerSample)
 	if _, err := wavFile.Write(wavHeader); err != nil {
-		return fmt.Errorf("failed to write %s header: %v", destinationExt, err)
+		return "", fmt.Errorf("failed to write %s header: %v", destinationExt, err)
 	}
 
 	buf := make([]byte, 4096)
 	for {
 		n, err := decoder.Read(buf)
 		if err != nil && err != io.EOF {
-			return fmt.Errorf("failed to read MP3 data: %v", err)
+			return "", fmt.Errorf("failed to read MP3 data: %v", err)
 		}
 		if n == 0 {
 			break
@@ -137,8 +149,8 @@ func (t *norma) normalizeFile(fileName string) error {
 
 		wavFile.Write(buf[:n])
 	}
-	return nil
 
+	return wavFileName, nil
 }
 
 func (t *norma) message(s string) {

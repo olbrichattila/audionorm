@@ -9,6 +9,7 @@ import (
 )
 
 func (t *norma) normalizeWAV(wavPath string) error {
+	fmt.Println(wavPath);
 	wavFile, err := os.OpenFile(wavPath, os.O_RDWR, 0644)
 	if err != nil {
 		return fmt.Errorf("failed to open %s file: %v", destinationExt, err)
