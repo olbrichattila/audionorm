@@ -2,13 +2,12 @@
 package normalizer
 
 import (
-	"encoding/binary"
 	"fmt"
 	"io"
 	"io/fs"
-	"math"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/hajimehoshi/go-mp3"
 )
@@ -17,6 +16,9 @@ const (
 	sourceExt      = ".mp3"
 	destinationExt = ".wav"
 	stereo         = 2
+
+	outputWavFolder = "./output/wav"
+	outputMp3Folder = "./output/mp3"
 )
 
 // New creates a normalized, if message callback is provided then it will be called with status messages, Signature is func(string)
@@ -33,7 +35,7 @@ func New(messageCallback interface{}) AudioNormalizer {
 
 // AudioNormalizer abstracts the normalizer logic
 type AudioNormalizer interface {
-	Normalize(folder string, factor, tolerance float64) error
+	Normalize(folder string, factor, tolerance float64, convertBackToMp3 bool) error
 }
 
 type norma struct {
@@ -43,7 +45,7 @@ type norma struct {
 }
 
 // Normalize starts normalizing files in the folder
-func (t *norma) Normalize(folder string, factor, tolerance float64) error {
+func (t *norma) Normalize(folder string, factor, tolerance float64, convertBackToMp3 bool) error {
 	t.factor = factor
 	t.tolerance = tolerance
 	t.message(
@@ -55,9 +57,12 @@ func (t *norma) Normalize(folder string, factor, tolerance float64) error {
 		return err
 	}
 
-	fileCount := t.numberOfFiles(files)
+	fileCount := t.numberOfFiles(files, sourceExt)
 	t.message(fmt.Sprintf("Number of mp3 files: %d", fileCount))
 	processed := 0
+
+	os.MkdirAll(outputWavFolder, os.ModePerm)
+	os.MkdirAll(outputMp3Folder, os.ModePerm)
 
 	for _, file := range files {
 		if filepath.Ext(file.Name()) == sourceExt {
@@ -65,19 +70,26 @@ func (t *norma) Normalize(folder string, factor, tolerance float64) error {
 			filePath := filepath.Join(folder, file.Name())
 			t.message(fmt.Sprintf("%d/%d Processing %s", fileCount, processed, filePath))
 			t.normalizeFile(filePath)
-			t.normalizeWAV(filePath + destinationExt)
+			
+			t.normalizeWAV(
+				t.replaceFileExtension(filePath, destinationExt),
+			)
 		}
 	}
 
-	t.message("Done\n")
+	t.message("Done converting to Wav and normalizing\n")
+
+	if convertBackToMp3 {
+		t.convertAllVawToMP3(outputWavFolder, outputMp3Folder);
+	}
 
 	return nil
 }
 
-func (t *norma) numberOfFiles(files []fs.DirEntry) int {
+func (t *norma) numberOfFiles(files []fs.DirEntry, ext string) int {
 	cnt := 0
 	for _, file := range files {
-		if filepath.Ext(file.Name()) == sourceExt {
+		if filepath.Ext(file.Name()) == ext {
 			cnt++
 		}
 	}
@@ -96,7 +108,7 @@ func (t *norma) normalizeFile(fileName string) error {
 		return fmt.Errorf("failed to decode MP3: %v", err)
 	}
 
-	wavFile, err := os.Create(fileName + destinationExt)
+	wavFile, err := os.Create("./output/wav/" +  t.replaceFileExtension(fileName, destinationExt))
 	if err != nil {
 		return fmt.Errorf("failed to create %s file: %v", destinationExt, err)
 	}
@@ -129,124 +141,33 @@ func (t *norma) normalizeFile(fileName string) error {
 
 }
 
-func (t *norma) normalizeWAV(wavPath string) error {
-	wavFile, err := os.OpenFile(wavPath, os.O_RDWR, 0644)
-	if err != nil {
-		return fmt.Errorf("failed to open %s file: %v", destinationExt, err)
-	}
-	defer wavFile.Close()
-
-	// Skip WAV headers (44 bytes)
-	wavFile.Seek(44, 0)
-
-	buf := make([]byte, 4096)
-	var maxSample int16
-	var sampleCount int64
-	peekBuffer := make([]int64, 32768)
-
-	// First pass: Find the maximum sample value
-	for {
-		n, err := wavFile.Read(buf)
-		if err != nil && err != io.EOF {
-			return fmt.Errorf("calculate max volume: failed to read %s data: %v", destinationExt, err)
-		}
-		if n == 0 {
-			break
-		}
-
-		for i := 0; i < n; i += 2 {
-			sample := int16(binary.LittleEndian.Uint16(buf[i : i+2]))
-			abs := t.abs(sample)
-			if abs > maxSample {
-				maxSample = abs
-			}
-			peekBuffer[abs]++
-			sampleCount++
-		}
-	}
-
-	// Calculate peek with some threshold
-	if t.tolerance > 0 {
-		for i := 32767; i > 0; i-- {
-			percentage := float64(peekBuffer[i]) / float64(sampleCount) * 10000000
-			if percentage > t.tolerance {
-				t.message(fmt.Sprintf("  - tolerance at %d position", 32767-i))
-				maxSample = int16(i)
-				break
-			}
-		}
-	}
-
-	// Calculate normalization factor
-	factor := float64(math.MaxInt16) / float64(maxSample) * float64(t.factor)
-	t.message(fmt.Sprintf("  - calculated factor: %0.4f, max Sample: %d", factor, maxSample))
-
-	// Second pass: Apply normalization
-	wavFile.Seek(44, 0)
-	for {
-		n, err := wavFile.Read(buf)
-		if err != nil && err != io.EOF {
-			return fmt.Errorf("apply: failed to read %s data: %v", destinationExt, err)
-		}
-		if n == 0 {
-			break
-		}
-
-		for i := 0; i < n; i += 2 {
-			sample := int16(binary.LittleEndian.Uint16(buf[i : i+2]))
-			normalizedSample := float64(sample) * factor
-
-			// In case of over amplification, remove some distortion
-			if normalizedSample > 32767 {
-				normalizedSample = 32767
-			} else if normalizedSample < -32767 {
-				normalizedSample = -32767
-			}
-
-			binary.LittleEndian.PutUint16(buf[i:i+2], uint16(int16(normalizedSample)))
-		}
-
-		// Write normalized data back
-		wavFile.Seek(-int64(n), io.SeekCurrent)
-		wavFile.Write(buf[:n])
-	}
-
-	return nil
-}
-
-func (*norma) createWAVHeader(dataSize, sampleRate int32, numChannels, bitsPerSample int16) []byte {
-	blockAlign := numChannels * bitsPerSample / 8
-	byteRate := sampleRate * int32(blockAlign)
-
-	header := make([]byte, 44)
-	copy(header[0:], []byte("RIFF"))
-	binary.LittleEndian.PutUint32(header[4:], uint32(36+dataSize))
-	copy(header[8:], []byte("WAVE"))
-	copy(header[12:], []byte("fmt "))
-	binary.LittleEndian.PutUint32(header[16:], 16)
-	binary.LittleEndian.PutUint16(header[20:], 1)
-	binary.LittleEndian.PutUint16(header[22:], uint16(numChannels))
-	binary.LittleEndian.PutUint32(header[24:], uint32(sampleRate))
-	binary.LittleEndian.PutUint32(header[28:], uint32(byteRate))
-	binary.LittleEndian.PutUint16(header[32:], uint16(blockAlign))
-	binary.LittleEndian.PutUint16(header[34:], uint16(bitsPerSample))
-	copy(header[36:], []byte("data"))
-	binary.LittleEndian.PutUint32(header[40:], uint32(dataSize))
-
-	return header
-}
-
-func (*norma) abs(x int16) int16 {
-	if x < 0 {
-		return -x
-	}
-	return x
-}
-
 func (t *norma) message(s string) {
 	if t.messageCallback != nil {
 		if callback, ok := t.messageCallback.(func(string)); ok {
 			callback(s)
 		}
 	}
+}
+
+func (t *norma)replaceFileExtension(filePath, newExt string) string {
+	oldExt := filepath.Ext(filePath)
+	return strings.TrimSuffix(filePath, oldExt) + newExt
+}
+
+func (t *norma)deleteFileIfExists(filePath string) error {
+	_, err := os.Stat(filePath)
+	if err != nil {
+
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+
+	err = os.Remove(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to delete file: %w", err)
+	}
+
+	return nil
 }

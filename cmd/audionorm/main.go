@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	folder, factor, tolerance, help, err := commandline.GetCommandLineParams()
+	folder, factor, tolerance, help, convertBackToMp3, err := commandline.GetCommandLineParams()
 	if err != nil {
 		fmt.Println("Error: \033[31m" + err.Error() + "\033[0m")
 		displayHelp()
@@ -25,7 +25,7 @@ func main() {
 		fmt.Println(message)
 	})
 
-	normalizer.Normalize(folder, factor, tolerance)
+	normalizer.Normalize(folder, factor, tolerance, convertBackToMp3)
 }
 
 func displayHelp() {
@@ -62,5 +62,48 @@ Examples:
    Uses the current directory, with over-amplification tolerance set to 2.
 
 7. audionorm -help
-   Displays this help message and exits.`)
-}
+   Displays this help message and exits.
+
+8. audionorm -mp3
+   Convert back to MP3
+   
+Note: This feature requires ffmpeg to be installed:
+Examples of installing:
+
+Linux (APT):
+ sudo apt update
+ sudo apt install ffmpeg
+
+Linux: Fedora/CentOS
+ sudo dnf install ffmpeg
+
+Linux: Arch
+ sudo pacman -S ffmpeg
+
+Compiling:
+ sudo apt-get update
+ sudo apt-get install -y autoconf automake build-essential libtool pkg-config
+ sudo apt-get install -y libx264-dev libx265-dev libvpx-dev
+
+ git clone https://git.ffmpeg.org/ffmpeg.git ffmpeg
+ cd ffmpeg
+ ./configure
+ make
+ sudo make install
+
+macOS: Using Homebrew (Recommended)
+  Install homebrew if not yet installed:
+   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+ brew install ffmpeg
+
+Using MacPorts:
+ sudo port install ffmpeg
+
+Windows: Using Chocolatey (Recommended)
+ Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+ choco install ffmpeg
+
+Or download and manually install:
+ https://ffmpeg.org/download.html#build-windows`)}
+

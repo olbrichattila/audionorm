@@ -9,23 +9,23 @@ import (
 )
 
 // GetCommandLineParams returns path, normalization factor and if help needs to be displayed
-func GetCommandLineParams() (string, float64, float64, bool, error) {
+func GetCommandLineParams() (string, float64, float64, bool, bool, error) {
 	folder := getFolder()
 	if !folderExists(folder) {
-		return "", 0, 0, false, fmt.Errorf("folder " + folder + " does not exists or not readable, or it is a file.")
+		return "", 0, 0, false, false, fmt.Errorf("folder " + folder + " does not exists or not readable, or it is a file.")
 	}
 
 	factor := getFactor()
 	if factor <= 0 || factor > 1 {
-		return "", 0, 0, false, fmt.Errorf("factor must be larger then 0 and smaller or equal then 1, example 0.8")
+		return "", 0, 0, false, false, fmt.Errorf("factor must be larger then 0 and smaller or equal then 1, example 0.8")
 	}
 
 	tolerance := getTolerance()
 	if tolerance < 0 || tolerance > 20 {
-		return "", 0, 0, false, fmt.Errorf("over amplification tolerance should be between 0 and 10")
+		return "", 0, 0, false, false, fmt.Errorf("over amplification tolerance should be between 0 and 10")
 	}
 
-	return folder, factor, tolerance, getHelp(), nil
+	return folder, factor, tolerance, getHelp(), getConvertBackToMp3(), nil
 }
 
 func getFolder() string {
@@ -70,6 +70,12 @@ func getTolerance() float64 {
 func getHelp() bool {
 	flagPars := getFlagParams()
 	_, ok := flagPars["-help"]
+	return ok
+}
+
+func getConvertBackToMp3() bool {
+	flagPars := getFlagParams()
+	_, ok := flagPars["-mp3"]
 	return ok
 }
 

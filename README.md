@@ -63,6 +63,69 @@ audionorm ./folder -tolerance=2
 audionorm ./folder -tolerance=20
 ```
 
+8. Convert it back to MP3:
+```
+audionorm . -mp3
+```
+
+> Note: This feature requires ffmpeg to be installed:
+Examples of installing:
+
+### Linux (APT):
+```
+sudo apt update
+sudo apt install ffmpeg
+```
+
+### Linux: Fedora/CentOS
+```
+sudo dnf install ffmpeg
+```
+
+### Linux: Arch
+```
+sudo pacman -S ffmpeg
+```
+
+### Compiling:
+```
+sudo apt-get update
+sudo apt-get install -y autoconf automake build-essential libtool pkg-config
+sudo apt-get install -y libx264-dev libx265-dev libvpx-dev
+```
+
+```
+git clone https://git.ffmpeg.org/ffmpeg.git ffmpeg
+cd ffmpeg
+./configure
+make
+sudo make install
+```
+
+### macOS: Using Homebrew (Recommended)
+```
+Install homebrew if not yet installed:
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
+
+```
+brew install ffmpeg
+```
+
+### Using MacPorts:
+```
+sudo port install ffmpeg
+```
+
+### Windows: Using Chocolatey (Recommended)
+```
+Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+choco install ffmpeg
+```
+
+### Or download and manually install: 
+https://ffmpeg.org/download.html#build-windows
+
 ## Tolerance Feature
 The tolerance feature allows the program to handle naturally occurring high volumes without clipping or distortion. By setting a tolerance level, the program will permit a certain amount of over-amplification, enabling loud segments to remain audible and impactful.
 
