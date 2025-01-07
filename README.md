@@ -159,3 +159,7 @@ This project is licensed under the MIT License. Feel free to use, modify, and di
 Coming soon.
 - Bitrate setup,
 - wav as input file
+
+## About me:
+- Learn more about me on my personal website. https://attilaolbrich.co.uk/menu/my-story
+- Check out my latest blog blog at my personal page. https://attilaolbrich.co.uk/blog/1/single
